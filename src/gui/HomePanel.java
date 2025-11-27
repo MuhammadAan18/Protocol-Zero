@@ -2,69 +2,81 @@ package gui;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class HomePanel extends JPanel{
 	private final Main mainFrame;
+	private final JButton btnStart = new JButton("START MISSION");
+	private final JButton btnGuide = new JButton("GUIDE MISSION");
+	private final JButton btnExit = new JButton("ABORT");
 
 	public HomePanel(Main mainFrame) {
 		this.mainFrame = mainFrame;
 		initUI();
 	}
 
+	protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Image bg = new ImageIcon("assets/bg_home.png").getImage();
+        g.drawImage(bg, 0, 0, getWidth(), getHeight(), this);
+    }
+
 	private void initUI() {
-		setLayout(new BorderLayout());
-		setBackground(Theme.BACKGROUND);
-		
-		// untuk title gamemya
-		JLabel titleLabel = new JLabel("Protocol Zero", SwingConstants.CENTER);
-		titleLabel.setFont(Theme.TITLE_FONT);
-		titleLabel.setForeground(Theme.COLOR_TITLE);
-		titleLabel.setBorder(BorderFactory.createEmptyBorder(40, 0, 20, 0));
-		add(titleLabel, BorderLayout.NORTH);
+        setLayout(null); //pake absolut layout buat atur tombol secara manual
 
-		// button untuk game, panduan, dan keluar
-		JPanel buttonPanel = new JPanel();
-		buttonPanel.setOpaque(false);
-        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
+        createButton(btnStart);
+        createButton(btnGuide);
+        createButton(btnExit);
 
-		JButton btnStart = new JButton("Mulai Permainan");
-		JButton btnGuide = new JButton("Panduan Permainan");
-		JButton btnExit = new JButton("Keluar");
+        add(btnStart);
+        add(btnGuide);
+        add(btnExit);
 
-		Dimension btnSize = new Dimension(300, 50);
-		JButton[] buttonList = {btnStart, btnGuide, btnExit};
+        // TODO: nanti ganti dengan pindah ke GamePanel kalo udah 
+        // btnStart.addActionListener(e -> { mainFrame.showGamePanel());
+        btnGuide.addActionListener(e -> mainFrame.showGuide());
+        btnExit.addActionListener(e -> mainFrame.showLogin());
 
-        for (JButton b : buttonList) {
-            b.setAlignmentX(Component.CENTER_ALIGNMENT);
-            b.setMaximumSize(btnSize);
-            b.setPreferredSize(btnSize);
-            b.setFont(Theme.BUTTON_FONT);
-        }
+		addComponentListener(new java.awt.event.ComponentAdapter() {
+        
+        @Override
+        public void componentResized(java.awt.event.ComponentEvent e) {
+            int btnWidth  = 540; // atur lebar
+            int btnHeight = 38; // atur tinggi
+            int baseY = 655; // atur horizontal
+            int centerX = (getWidth() - btnWidth) / 2 - 65; //atur vertikal
+            int gap   = 50;
 
-		// Komposisi dari tombolnya
-		buttonPanel.add(Box.createVerticalGlue());
-        buttonPanel.add(btnStart);
-        buttonPanel.add(Box.createRigidArea(new Dimension(0, 20))); // jarak 20
-        buttonPanel.add(btnGuide);
-        buttonPanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        buttonPanel.add(btnExit);
-        buttonPanel.add(Box.createVerticalGlue());
+            btnStart.setBounds(centerX, baseY, btnWidth, btnHeight);
+            btnGuide.setBounds(centerX, baseY + gap, btnWidth, btnHeight);
+            btnExit.setBounds(centerX, baseY + 2 * gap, btnWidth, btnHeight);
 
-        add(buttonPanel, BorderLayout.CENTER);
+            repaint();
+        }});
+    }
 
-
-		btnExit.addActionListener(e -> {
-			int result = JOptionPane.showConfirmDialog(
-            this,
-            "Apakah kamu yakin ingin keluar?",
-            "Konfirmasi Keluar",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE
-    		);
-
-			if (result == JOptionPane.YES_OPTION) {
-				mainFrame.exitGame();
-			}
-		});
-	}
+    private JButton createButton(JButton b) {
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setForeground(new Color(0, 255, 255));
+        b.setFont(Theme.TITLE_FONT);
+        b.setBorder(BorderFactory.createLineBorder(Theme.NEON_BLUE));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        //hover
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                b.setBackground(Theme.NEON_BLUE);
+                b.setForeground(Theme.COLOR_TITLE);
+                b.setBorder(BorderFactory.createLineBorder(Theme.COLOR_TITLE));
+            }
+            public void mouseExited(MouseEvent e) {
+                b.setBackground(Theme.NEON_DARK);
+                b.setForeground(new Color(0, 255,255));
+                b.setBorder(BorderFactory.createLineBorder(Theme.NEON_BLUE));
+            }
+        });
+        return b;
+    }
 }
