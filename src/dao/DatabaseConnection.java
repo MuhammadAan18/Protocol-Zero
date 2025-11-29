@@ -1,5 +1,6 @@
 package dao;
 
+import model.*;
 import java.sql.*;
 
 public class DatabaseConnection {
@@ -27,18 +28,20 @@ public class DatabaseConnection {
     	}
   	}
 
-  	public int loginUser(String username, String password) {
-    	final String sql = "SELECT user_id FROM user WHERE username=? AND password=?";
-   		try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-      		ps.setString(1, username);
-      		ps.setString(2, password);
-      	try (ResultSet rs = ps.executeQuery()) {
-        	if (rs.next()) return rs.getInt("user_id");
-      	}
-    	} catch (SQLException e) {
-      		throw new RuntimeException("DB error saat login: " + e.getMessage(), e);
+  	public User loginUser(String username, String password) throws SQLException {
+	    final String sql = "SELECT user_id, username, password FROM user WHERE username=? AND password=?";
+    	try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+	        ps.setString(1, username);
+    	    ps.setString(2, password);
+        	try (ResultSet rs = ps.executeQuery()) {
+            	if (rs.next()) {
+	                int id = rs.getInt("user_id");
+    	            String uss = rs.getString("username");
+        	        String pass = rs.getString("password");
+            	    return new User(id, uss, pass);
+            	}
+        	}
     	}
-    	return -1;
-  	}
-
+    	return null;
+	}
 }

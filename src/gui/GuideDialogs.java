@@ -10,13 +10,13 @@ public class GuideDialogs {
         JDialog dialog = new JDialog(parent, "Protocol Zero – Panduan", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
-        Color bg      = Theme.BACKGROUND;
-        Color neon    = Theme.NEON_BLUE;
+        Color bg = Theme.BACKGROUND;
+        Color neon = Theme.NEON_BLUE;
         Color textCol = Theme.TEXT_COLOR;
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(bg);
         root.setBorder(new EmptyBorder(12, 12, 12, 12));
-        JLabel title = new JLabel("PANDUAN PERMAINAN", SwingConstants.CENTER);
+        JLabel title = new JLabel("GUIDE MISSION", SwingConstants.CENTER);
         title.setFont(Theme.BUTTON_FONT);
         title.setForeground(neon);
         title.setBorder(new EmptyBorder(0, 0, 10, 0));
@@ -122,5 +122,9 @@ public class GuideDialogs {
         dialog.setLocationRelativeTo(parent);
         dialog.setUndecorated(true); // menghilangkan header dialog
         dialog.setVisible(true);
+    }
+
+    public static void showManual(Main parrent) {
+        // nanti untuk aturan permainannya
     }
 }

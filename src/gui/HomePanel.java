@@ -1,12 +1,14 @@
 package gui;
 
-import javax.swing.*;
+import model.User;
+
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
+import javax.swing.*;
 
 public class HomePanel extends JPanel{
 	private final Main mainFrame;
+    private final JLabel usserLabel = new JLabel("", SwingConstants.CENTER);
 	private final JButton btnStart = new JButton("START MISSION");
 	private final JButton btnGuide = new JButton("GUIDE MISSION");
 	private final JButton btnExit = new JButton("ABORT");
@@ -18,23 +20,27 @@ public class HomePanel extends JPanel{
 
 	protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Image bg = new ImageIcon("assets/bg_home.png").getImage();
+        Image bg = new ImageIcon("assets/bg/bg_home.png").getImage();
         g.drawImage(bg, 0, 0, getWidth(), getHeight(), this);
     }
 
 	private void initUI() {
         setLayout(null); //pake absolut layout buat atur tombol secara manual
 
+        usserLabel.setFont(Theme.USSER_FONT);
+        usserLabel.setForeground(Theme.NEON_BLUE);
+        usserLabel.setOpaque(false);
+
         createButton(btnStart);
         createButton(btnGuide);
         createButton(btnExit);
 
+        add(usserLabel);
         add(btnStart);
         add(btnGuide);
         add(btnExit);
 
-        // TODO: nanti ganti dengan pindah ke GamePanel kalo udah 
-        // btnStart.addActionListener(e -> { mainFrame.showGamePanel());
+        btnStart.addActionListener(e -> mainFrame.showGamePanel());
         btnGuide.addActionListener(e -> mainFrame.showGuide());
         btnExit.addActionListener(e -> mainFrame.showLogin());
 
@@ -52,8 +58,22 @@ public class HomePanel extends JPanel{
             btnGuide.setBounds(centerX, baseY + gap, btnWidth, btnHeight);
             btnExit.setBounds(centerX, baseY + 2 * gap, btnWidth, btnHeight);
 
+            int labelWidth = getWidth();
+            int labelHeight = 50;
+            int labelY = 480;
+            int labelx = -60;
+
+            usserLabel.setBounds(labelx, labelY, labelWidth, labelHeight);
+
             repaint();
         }});
+    }
+
+    public void updateUsername() {
+        User user = mainFrame.getCurrentUsername();
+        if (user != null) {
+            usserLabel.setText("WELCOME AGENT " + user.getUsername().toUpperCase());
+        }
     }
 
     private JButton createButton(JButton b) {

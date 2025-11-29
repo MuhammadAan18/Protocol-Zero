@@ -1,23 +1,20 @@
 package gui;
 
-import dao.DatabaseConnection;
+import model.User;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.awt.geom.Path2D;
 
 public class LoginPanel extends JPanel {
-
     private final Main mainApp;
     private final JTextField userField = new JTextField();
     private final JPasswordField passField = new JPasswordField();
     private final JButton loginButton = new JButton("LOGIN");
     private final JButton registerButton = new JButton("REGISTER");
     private final JButton quitButton = new JButton("QUIT");
-
 
     public LoginPanel(Main mainApp) {
         this.mainApp = mainApp;
@@ -46,7 +43,7 @@ public class LoginPanel extends JPanel {
 
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.drawImage(new ImageIcon("assets/bg_login.png").getImage(), 0, 0, getWidth(), getHeight(), this);
+        g.drawImage(new ImageIcon("assets/bg/bg_login.png").getImage(), 0, 0, getWidth(), getHeight(), this);
     }
 
     private class HudPanel extends JPanel {
@@ -248,14 +245,14 @@ public class LoginPanel extends JPanel {
         }
 
         try {
-            DatabaseConnection db = mainApp.getDb();
-            int userId = db.loginUser(username, password);
-            if (userId > 0) {
-                JOptionPane.showMessageDialog(this, "Access Granted.", "System", JOptionPane.INFORMATION_MESSAGE);
-                mainApp.onLoginSuccess(userId, username);
+            User user = mainApp.getDb().loginUser(username, password);
+            if (user != null) {
+                JOptionPane.showMessageDialog(this, "ACCESS GRANTED.", "System", JOptionPane.INFORMATION_MESSAGE);
+                mainApp.setCurrentUsername(user);
+                mainApp.showHome();
                 resetField();
             } else {
-                showError("LOGIN FAILED", "Invalid credentials.");
+                showError("LOGIN FAILED", "INVALID CREDENTIALS");
             }
         } catch (Exception ex) {
             showError("SYSTEM ERROR", ex.getMessage());
