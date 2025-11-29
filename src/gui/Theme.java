@@ -15,4 +15,5 @@ public class Theme {
 	public static final Font USSER_FONT = new Font("Eurostile", Font.BOLD, 40);
 	public static final Font TITLE_FONT = new Font("Monospaced", Font.BOLD, 16);
 	public static final Font LABEL_FONT = new Font("Monospaced", Font.PLAIN, 8);
+	public static final Font COUNTDOWN_FONT = new Font("Monospaced", Font.BOLD, 140);
 }

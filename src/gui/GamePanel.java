@@ -1,6 +1,11 @@
 package gui;
 
 import java.awt.*;
+import java.io.File;
+
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -27,17 +32,27 @@ public class GamePanel extends JPanel {
     private Bomb currentBomb;
     private int currentStrikes = 0;
 
+	private javax.swing.Timer bombTimer;
+	private int remainingSeconds;
+	private Clip bombTickClip;
+	private boolean fastTickActive = false;
+
     public GamePanel(Main main) {
 		setBackground(Theme.BACKGROUND);
         this.mainApp = main;
         initUI();
         initActions();
+		initSound();
     }
 
     // ================== LOAD BOMB ==================
     public void loadBomb(Bomb bomb) {
         this.currentBomb   = bomb;
         this.currentStrikes = 0;
+
+		if (bombTimer != null) {
+        	bombTimer.stop();
+    	}
 
 		if (bomb == null) {
             serialNumber.setText("NO BOMB");
@@ -87,6 +102,11 @@ public class GamePanel extends JPanel {
         // contoh kalau module wire
         if (module instanceof WireModule wire) {
             return new WireModulPanel(wire, this::registerStrike);
+        }
+
+        // contoh kalau module wire
+        if (module instanceof ButtonModule buttonModule) {
+            return new ButtonModulPanel(buttonModule, this::registerStrike);
         }
 
         // fallback sementara: panel teks nama module
@@ -171,7 +191,6 @@ public class GamePanel extends JPanel {
         btnManual.addActionListener(e -> mainApp.showGuide());
     }
 
-    // ================== HUD SETTER ==================
     public void setSerialText(String serial) {
         serialNumber.setText(serial);
     }
@@ -185,7 +204,6 @@ public class GamePanel extends JPanel {
         updateStrikeHud();
     }
 
-    // ================== STRIKE & STATUS ==================
     private void updateStrikeHud() {
         if (currentBomb == null) {
             strikeLabel.setIcon(null);
@@ -193,7 +211,7 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        int max = currentBomb.getMaxStrikes(); // contoh: 3
+        int max = currentBomb.getMaxStrikes(); 
         int used = Math.min(currentStrikes, max); // berapa strike yang sudah kena (0..max)
         int iconIndex = Math.min(used, strike.length - 1); // clamp ke 0..3
 
@@ -201,7 +219,7 @@ public class GamePanel extends JPanel {
         strikeLabel.setIcon(strike[iconIndex]);
     }
 
-	// Dipanggil dari modul ketika player salah (misal WireModulPanel)
+	// Dipanggil dari modul ketika player salah
     private void registerStrike() {
         if (currentBomb == null) return;
 
@@ -209,13 +227,17 @@ public class GamePanel extends JPanel {
         updateStrikeHud();
 
         if (currentStrikes >= currentBomb.getMaxStrikes()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "BOMB DETONATED.\nMission failed.",
-                    "Explosion",
-                    JOptionPane.ERROR_MESSAGE
-            );
-            mainApp.showHome();
+    		if (bombTimer != null) bombTimer.stop();
+    		playExplosionOnce();
+
+    		JOptionPane.showMessageDialog(
+            	this,
+	            "BOMB DETONATED.\nMission failed.",
+    	        "Explosion",
+        	    JOptionPane.ERROR_MESSAGE
+    		);
+            playExplosionOnce();
+    		mainApp.showHome();
         }
     }
 
@@ -225,6 +247,8 @@ public class GamePanel extends JPanel {
         boolean allSolved = currentBomb.getModules().stream().allMatch(BombModule::isSolvedStatus);
 
         if (allSolved) {
+			if (bombTimer != null) bombTimer.stop();
+    		stopTickSound();
             JOptionPane.showMessageDialog(
                     this,
                     "BOMB DEFUSED.\nMission complete.",
@@ -241,4 +265,129 @@ public class GamePanel extends JPanel {
             );
 		}
     }
+
+	public void startBombTimer() {
+    	if (currentBomb == null) return;
+
+    	remainingSeconds = currentBomb.getTimeLimit();
+    	setTimerText(formatTime(remainingSeconds));
+
+	    if (bombTimer != null) {
+    	    bombTimer.stop();
+	    }
+    	playNormalTickLoop();
+
+    	bombTimer = new Timer(1000, e -> {
+        	remainingSeconds--;
+        	setTimerText(formatTime(remainingSeconds));
+
+        	// ganti ke fast ticking kalau sisa <= 10
+        	if (remainingSeconds >10) {
+            	if (fastTickActive) {
+                	playNormalTickLoop();
+            	}
+        	} else {
+            	if (!fastTickActive) {
+                	playFastTickLoop();
+            	}
+        	}
+
+        	if (remainingSeconds <= 0) {
+            	((Timer) e.getSource()).stop();
+            	handleTimeUp();
+        	}
+    	});
+    	bombTimer.start();
+	}
+
+    public int getLastTimerDigit() {
+        if (remainingSeconds < 0) return 0;
+        return Math.abs(remainingSeconds) % 10;
+    }
+
+	private void handleTimeUp() {
+    	if (bombTimer != null) bombTimer.stop();
+    	stopTickSound();
+    	JOptionPane.showMessageDialog(
+            this,
+            "TIME'S UP!\nBomb detonated.",
+            "Explosion",
+            JOptionPane.ERROR_MESSAGE
+    	);
+    	mainApp.showHome();   // kembali ke menu home
+	}
+
+	private void initSound() {
+    	try {
+	        File soundFile = new File("assets/sounds/tick.wav"); // nanti taruh di sini
+    	    AudioInputStream ais = AudioSystem.getAudioInputStream(soundFile);
+        	bombTickClip = AudioSystem.getClip();
+	        bombTickClip.open(ais);
+    	} catch (Exception ex) {
+        	ex.printStackTrace();
+	        bombTickClip = null;
+    	}
+	}
+
+	private void playNormalTickLoop() {
+    	if (bombTickClip == null) return;
+
+    	fastTickActive = false;
+    	bombTickClip.stop();
+
+    	float frameRate = bombTickClip.getFormat().getFrameRate();
+
+	    int startFrame = 0;
+    	int endFrame   = (int) (7000 * frameRate / 1000); // 0 - 7 detik
+
+	    bombTickClip.setLoopPoints(startFrame, endFrame);
+    	bombTickClip.setFramePosition(startFrame);
+    	bombTickClip.loop(Clip.LOOP_CONTINUOUSLY);
+	}
+
+	private void playFastTickLoop() {
+    	if (bombTickClip == null) return;
+
+	    fastTickActive = true;
+    	bombTickClip.stop();
+
+	    float frameRate = bombTickClip.getFormat().getFrameRate();
+
+    	int startFrame = 8000; //dari 8 detik
+	    int endFrame   = (int) (13000 * frameRate / 1000); // sampai detik ke-14
+
+    	bombTickClip.setLoopPoints(startFrame, endFrame);
+	    bombTickClip.setFramePosition(startFrame);
+    	bombTickClip.loop(Clip.LOOP_CONTINUOUSLY);
+	}
+
+    private void playExplosionOnce() {
+    if (bombTickClip == null) return;
+
+    try {
+        bombTickClip.stop();
+
+        float frameRate  = bombTickClip.getFormat().getFrameRate();
+        int frameLength  = bombTickClip.getFrameLength();
+
+        int startFrame = (int) (10000 * frameRate / 1000f);
+        int endFrame = (int) (10500 * frameRate / 1000f);
+        if (startFrame >= frameLength) {
+            startFrame = 0;
+        }
+
+        bombTickClip.setLoopPoints(startFrame, endFrame);
+        bombTickClip.setFramePosition(startFrame);
+        bombTickClip.start();
+
+    } catch (Exception ex) {
+        ex.printStackTrace();
+    }
+    }
+
+	private void stopTickSound() {
+    	if (bombTickClip != null && bombTickClip.isRunning()) {
+        	bombTickClip.stop();
+    	}
+	}
 }

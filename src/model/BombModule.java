@@ -17,5 +17,5 @@ public abstract class BombModule {
 	}
 
     // // dipanggil setelah bomb di-load untuk set rule berdasarkan serial
-    // public abstract void applySerialRules(String serial);
+    public abstract void applySerialRules(String serial);
 }

@@ -10,17 +10,17 @@ import javax.swing.*;
 
 public class Main extends JFrame{
 	private User currentUser;
-
+	private Bomb currentBomb;
 	private DatabaseConnection db = new DatabaseConnection(); // buat inisialisasi DB
 	private BombDAO bombDao = new BombDAO();
-	private Bomb currentBomb;
 	
 	private final CardLayout cardLayout = new CardLayout(); // layout card buat pindah" panel
 	private final JPanel panelContainer = new JPanel(cardLayout); // panel card yang digunakan
-
 	private final LoginPanel loginPanel = new LoginPanel(this);
 	private final HomePanel homePanel = new HomePanel(this);
 	private final GamePanel gamePanel = new GamePanel(this);
+	private final CountDownPanel countdownPanel = new CountDownPanel();
+	
 	
 	public Main() {
 		setTitle("Protocol Zero");
@@ -32,6 +32,7 @@ public class Main extends JFrame{
 		panelContainer.add(loginPanel, "LOGIN");
 		panelContainer.add(homePanel, "HOME");
 		panelContainer.add(gamePanel, "GAME");
+		panelContainer.add(countdownPanel, "COUNTDOWN");
 		
 		setContentPane(panelContainer); // panelContainer menjadi content utama frame 
 
@@ -56,19 +57,33 @@ public class Main extends JFrame{
     }
 	
 	public void showGamePanel() {
-		try {
-        Bomb bomb = bombDao.loadRandomBomb();
-        gamePanel.loadBomb(bomb);      
-        cardLayout.show(panelContainer, "GAME");
-    } catch (Exception ex) {
-        JOptionPane.showMessageDialog(
-                this,
-                "Gagal memuat bomb: " + ex.getMessage(),
-                "DB Error",
-                JOptionPane.ERROR_MESSAGE
-        );
+        try {
+            currentBomb = bombDao.loadRandomBomb();
+            if (currentBomb == null) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Tidak ada bomb di database!",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+            gamePanel.loadBomb(currentBomb);
+            cardLayout.show(panelContainer, "COUNTDOWN");
+            countdownPanel.startCountdown(() -> {
+                cardLayout.show(panelContainer, "GAME");
+                gamePanel.startBombTimer();
+            });
+
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Gagal memuat bomb: " + ex.getMessage(),
+                    "DB Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
-	}
 
 	public void showGuide() {
 		GuideDialogs.showCyberpunk(this); //buat cara main
