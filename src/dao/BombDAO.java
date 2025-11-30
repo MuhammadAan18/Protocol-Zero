@@ -92,7 +92,6 @@ public class BombDAO extends DatabaseConnection {
             }
 
             // load keypad module
-
             String sqlKeypad = """
                     SELECT column_index
                     FROM bomb_keypad
@@ -124,6 +123,30 @@ public class BombDAO extends DatabaseConnection {
                     }
                 }
             }
+
+            // load simon module
+            String sqlSimon = """
+                SELECT start_length, target_length
+                FROM bomb_simon
+                WHERE bomb_id = ?
+                LIMIT 1
+                """;
+
+            try (PreparedStatement psSimon = c.prepareStatement(sqlSimon)) {
+                psSimon.setInt(1, bombId);
+
+                try (ResultSet rsSimon = psSimon.executeQuery()) {
+                    if (rsSimon.next()) {
+                        int startLength  = rsSimon.getInt("start_length");
+                        int targetLength = rsSimon.getInt("target_length");
+
+                        SimonModule simonModule = new SimonModule(startLength, targetLength);
+                        simonModule.applySerialRules(serial);
+                        modules.add(simonModule);
+                    }
+                }
+            }
+
 
             return new Bomb(bombId, serial, maxStrikes, timeLimit, modules);
         }

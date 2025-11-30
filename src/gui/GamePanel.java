@@ -8,6 +8,8 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import java.awt.event.*;
+
 
 import model.*;
 
@@ -58,7 +60,7 @@ public class GamePanel extends JPanel {
             serialNumber.setText("NO BOMB");
             timer.setText("--:--");
             strikeLabel.setIcon(null);
-            strikeLabel.setText("");
+            strikeLabel.setText("Null");
             if (grid != null) {
                 grid.removeAll();
                 grid.revalidate();
@@ -99,6 +101,8 @@ public class GamePanel extends JPanel {
     }
 
     private JComponent createPanelForModule(BombModule module) { // bikin panel GUI untuk tiap module
+        
+        JPanel p = new JPanel();
         // module wire
         if (module instanceof WireModule wire) {
             return new WireModulPanel(wire, this::registerStrike);
@@ -109,15 +113,16 @@ public class GamePanel extends JPanel {
             return new ButtonModulPanel(buttonModule, this::registerStrike);
         }
 
+        // module keypad
         if (module instanceof KeypadModule keypadModule) {
             return new KeypadModulPanel(keypadModule, this::registerStrike);
         }
 
-        // fallback sementara: panel teks nama module
-        JPanel p = new JPanel();
-        p.setOpaque(false);
-        p.setBorder(BorderFactory.createLineBorder(Theme.NEON_BLUE));
-        p.add(new JLabel(module.getmodulName()));
+        // module simon
+        if (module instanceof SimonModule simonModule) {
+            return new SimonModulePanel(simonModule, this::registerStrike);
+        }
+
         return p;
     }
 
@@ -138,14 +143,14 @@ public class GamePanel extends JPanel {
         hud.setOpaque(false);
         hud.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        serialNumber.setForeground(Theme.NEON_BLUE);
-        serialNumber.setFont(Theme.TITLE_FONT);
+        serialNumber.setForeground(Theme.COLOR_TITLE);
+        serialNumber.setFont(Theme.BUTTON_FONT);
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setOpaque(false);
         left.add(serialNumber);
 
-        timer.setForeground(Theme.NEON_BLUE);
-        timer.setFont(Theme.TITLE_FONT);
+        timer.setForeground(Theme.COLOR_TITLE);
+        timer.setFont(Theme.BUTTON_FONT);
         JPanel center = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         center.setOpaque(false);
         center.add(timer);
@@ -170,19 +175,56 @@ public class GamePanel extends JPanel {
     }
 
     private JComponent buttonControl() {
+        // Container utama untuk tombol (BorderLayout: WEST, CENTER, EAST)
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
         bottom.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        btnBack.setOpaque(false);
-        btnDefuse.setOpaque(false);
-        btnManual.setOpaque(false);
+        // Inisialisasi styling untuk semua tombol
+        createButton(btnBack);
+        createButton(btnDefuse);
+        createButton(btnManual);
 
-        bottom.add(btnBack, BorderLayout.WEST);
-        bottom.add(btnDefuse, BorderLayout.CENTER);
-        bottom.add(btnManual, BorderLayout.EAST);
+        // 1. KIRI (btnBack) - menggunakan FlowLayout.LEFT untuk memastikan padding kiri
+        JPanel leftContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftContainer.setOpaque(false);
+        leftContainer.add(btnBack);
+        bottom.add(leftContainer, BorderLayout.WEST);
+
+        // 2. TENGAH (btnDefuse) - menggunakan FlowLayout.CENTER agar tombol tidak stretch
+        JPanel centerContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        centerContainer.setOpaque(false);
+        centerContainer.add(btnDefuse);
+        bottom.add(centerContainer, BorderLayout.CENTER); // BARU: Tambahkan ke CENTER
+
+        // 3. KANAN (btnManual) - menggunakan FlowLayout.RIGHT untuk memastikan padding kanan
+        JPanel rightContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        rightContainer.setOpaque(false);
+        rightContainer.add(btnManual);
+        bottom.add(rightContainer, BorderLayout.EAST); // btnManual sudah ada di sini
 
         return bottom;
+    }
+
+    private JButton createButton(JButton b) {
+        b.setOpaque(false);
+        b.setBorder(null);
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setForeground(Theme.COLOR_TITLE);
+        b.setFont(Theme.BUTTON_FONT);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        //hover
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                b.setForeground(Theme.NEON_BLUE);
+            }
+            public void mouseExited(MouseEvent e) {
+                b.setForeground(Theme.TEXT_COLOR);
+            }
+        });
+        return b;
     }
 
 	private ImageIcon loadStrikeIcon(String path) {
@@ -193,10 +235,7 @@ public class GamePanel extends JPanel {
 
     private void initActions() {
         btnBack.addActionListener(e -> mainApp.showHome());
-        btnDefuse.addActionListener(e -> {
-            // nanti diisi logika cek semua modul, atau langsung pakai checkAllModulesSolved()
-            checkAllModulesSolved();
-        });
+        btnDefuse.addActionListener(e -> checkAllModulesSolved());
         btnManual.addActionListener(e -> mainApp.showGuide());
     }
 
@@ -216,15 +255,12 @@ public class GamePanel extends JPanel {
     private void updateStrikeHud() {
         if (currentBomb == null) {
             strikeLabel.setIcon(null);
-            strikeLabel.setText("");
             return;
         }
 
         int max = currentBomb.getMaxStrikes(); 
         int used = Math.min(currentStrikes, max); // berapa strike yang sudah kena (0..max)
         int iconIndex = Math.min(used, strike.length - 1); // clamp ke 0..3
-
-        strikeLabel.setText("");
         strikeLabel.setIcon(strike[iconIndex]);
     }
 
@@ -234,6 +270,12 @@ public class GamePanel extends JPanel {
 
         currentStrikes++;
         updateStrikeHud();
+
+        for (BombModule m : currentBomb.getModules()) { //khusus untu modul simon untuk ngeset jumlah strike nya
+            if (m instanceof SimonModule simon) {
+                simon.setStrikeCount(currentStrikes);
+            }
+        }
 
         if (currentStrikes >= currentBomb.getMaxStrikes()) {
     		if (bombTimer != null) bombTimer.stop();
@@ -245,7 +287,6 @@ public class GamePanel extends JPanel {
     	        "Explosion",
         	    JOptionPane.ERROR_MESSAGE
     		);
-            playExplosionOnce();
     		mainApp.showHome();
         }
     }
@@ -323,12 +364,12 @@ public class GamePanel extends JPanel {
             "Explosion",
             JOptionPane.ERROR_MESSAGE
     	);
-    	mainApp.showHome();   // kembali ke menu home
+    	mainApp.showHome();
 	}
 
 	private void initSound() {
     	try {
-	        File soundFile = new File("assets/sounds/tick.wav"); // nanti taruh di sini
+	        File soundFile = new File("assets/sounds/tick.wav"); 
     	    AudioInputStream ais = AudioSystem.getAudioInputStream(soundFile);
         	bombTickClip = AudioSystem.getClip();
 	        bombTickClip.open(ais);
