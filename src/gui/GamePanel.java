@@ -99,14 +99,18 @@ public class GamePanel extends JPanel {
     }
 
     private JComponent createPanelForModule(BombModule module) { // bikin panel GUI untuk tiap module
-        // contoh kalau module wire
+        // module wire
         if (module instanceof WireModule wire) {
             return new WireModulPanel(wire, this::registerStrike);
         }
 
-        // contoh kalau module wire
+        // module wire
         if (module instanceof ButtonModule buttonModule) {
             return new ButtonModulPanel(buttonModule, this::registerStrike);
+        }
+
+        if (module instanceof KeypadModule keypadModule) {
+            return new KeypadModulPanel(keypadModule, this::registerStrike);
         }
 
         // fallback sementara: panel teks nama module
@@ -119,10 +123,10 @@ public class GamePanel extends JPanel {
 
     // ================== UI SETUP ==================
     private void initUI() {
-        setLayout(new BorderLayout(10, 10));
+        setLayout(new BorderLayout());
         setOpaque(true); // nanti ganti 
 		setBackground(Color.BLACK);
-        setBorder(new EmptyBorder(20, 20, 20, 20));
+        // setBorder(new EmptyBorder(20, 20, 20, 20));
 
         add(statusPanel(), BorderLayout.NORTH);
         add(modulGrid(),   BorderLayout.CENTER);
@@ -159,19 +163,24 @@ public class GamePanel extends JPanel {
     }
 
     private JComponent modulGrid() {
-        grid = new JPanel(new GridLayout(2, 2, 16, 16));
+        grid = new JPanel(new GridLayout(2, 2, 8, 8));
         grid.setOpaque(false);
-        grid.setBorder(new EmptyBorder(10, 20, 10, 20));
+        grid.setBorder(new EmptyBorder(0, 10, 0, 10));
         return grid;
     }
 
     private JComponent buttonControl() {
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
+        bottom.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        bottom.add(btnBack);
-        bottom.add(btnDefuse);
-        bottom.add(btnManual);
+        btnBack.setOpaque(false);
+        btnDefuse.setOpaque(false);
+        btnManual.setOpaque(false);
+
+        bottom.add(btnBack, BorderLayout.WEST);
+        bottom.add(btnDefuse, BorderLayout.CENTER);
+        bottom.add(btnManual, BorderLayout.EAST);
 
         return bottom;
     }
@@ -362,27 +371,27 @@ public class GamePanel extends JPanel {
 	}
 
     private void playExplosionOnce() {
-    if (bombTickClip == null) return;
+        if (bombTickClip == null) return;
 
-    try {
-        bombTickClip.stop();
+        try {
+            bombTickClip.stop();
 
-        float frameRate  = bombTickClip.getFormat().getFrameRate();
-        int frameLength  = bombTickClip.getFrameLength();
+            float frameRate  = bombTickClip.getFormat().getFrameRate();
+            int frameLength  = bombTickClip.getFrameLength();
 
-        int startFrame = (int) (10000 * frameRate / 1000f);
-        int endFrame = (int) (10500 * frameRate / 1000f);
-        if (startFrame >= frameLength) {
-            startFrame = 0;
+            int startFrame = (int) (10000 * frameRate / 1000f);
+            int endFrame = (int) (10500 * frameRate / 1000f);
+            if (startFrame >= frameLength) {
+                startFrame = 0;
+            }
+
+            bombTickClip.setLoopPoints(startFrame, endFrame);
+            bombTickClip.setFramePosition(startFrame);
+            bombTickClip.start();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-
-        bombTickClip.setLoopPoints(startFrame, endFrame);
-        bombTickClip.setFramePosition(startFrame);
-        bombTickClip.start();
-
-    } catch (Exception ex) {
-        ex.printStackTrace();
-    }
     }
 
 	private void stopTickSound() {

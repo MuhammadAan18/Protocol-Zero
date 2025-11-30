@@ -4,10 +4,8 @@ import model.Button;
 import model.ButtonModule;
 import model.ButtonModule.ButtonAction;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-
 import java.awt.*;
+import javax.swing.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -16,7 +14,6 @@ public class ButtonModulPanel extends JPanel {
     private final ButtonModule modul;
     private final Runnable onStrike;
     private JButton mainButtonVisual;
-    private JLabel statusLabel;
 
     private static final int BTN_SIZE = 275;
     private static final long TAP_THRESHOLD_MS = 300; // < 300ms = TAP, >= 300ms = HOLD
@@ -35,24 +32,12 @@ public class ButtonModulPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         setOpaque(false);
 
-        // HEADER KECIL
-        JPanel northPanel = new JPanel();
-        northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
-        northPanel.setOpaque(false);
-        
-        statusLabel = new JLabel("Tekan tombol untuk mencoba.", SwingConstants.CENTER);
-        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        statusLabel.setForeground(Color.WHITE);
-        statusLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        northPanel.add(statusLabel);
-        northPanel.setBorder(new EmptyBorder(10,0,10,0));
         holdTimeLabel = new JLabel("Hold: 0.00 s", SwingConstants.CENTER);
         holdTimeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        holdTimeLabel.setForeground(Color.ORANGE);
-        holdTimeLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        northPanel.add(holdTimeLabel);
+        holdTimeLabel.setForeground(Theme.COLOR_TITLE);
+        holdTimeLabel.setFont(Theme.BUTTON_FONT);
 
-        add(northPanel, BorderLayout.NORTH);
+        add(holdTimeLabel, BorderLayout.NORTH);
 
         // TOMBOL UTAMA (IKON + LABEL)
         JPanel centerPanel = new JPanel(new GridBagLayout());
@@ -78,16 +63,11 @@ public class ButtonModulPanel extends JPanel {
         mainButtonVisual.setOpaque(false);
         mainButtonVisual.setMargin(new Insets(0, 0, 0, 0));
         mainButtonVisual.setForeground(Color.WHITE);
-
         mainButtonVisual.setPreferredSize(new Dimension(BTN_SIZE, BTN_SIZE));
         mainButtonVisual.setMinimumSize(new Dimension(BTN_SIZE, BTN_SIZE));
         mainButtonVisual.setMaximumSize(new Dimension(BTN_SIZE, BTN_SIZE));
-
-        // Penting: harus enabled supaya menerima mouse event
         mainButtonVisual.setEnabled(true);
 
-
-        // Mouse listener: bedakan TAP vs HOLD
         mainButtonVisual.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -103,6 +83,7 @@ public class ButtonModulPanel extends JPanel {
                 long duration = System.currentTimeMillis() - pressStartTime;
                 double sec = duration / 1000.0;
                 long roundedSec = Math.round(sec);
+
                 holdTimeLabel.setText(String.format("Hold: %.2f s (≈ %d)", sec, roundedSec));
                 handlePressAction(duration, roundedSec);
             }
@@ -140,34 +121,39 @@ public class ButtonModulPanel extends JPanel {
     // ====== LOGIKA PRESS ======
 
     private void handlePressAction(long durationMs, long roundedSeconds) {
-    boolean success;
+        boolean success = false;
+        ButtonAction required = modul.getRequiredAction();
 
-        if (durationMs < TAP_THRESHOLD_MS) {
-            // klik cepat → TAP
-            success = modul.tap();
-        } else {
-            // hold → cek berdasar detik yang dibulatkan
-            success = modul.solveByHoldSeconds(roundedSeconds);
+        if (durationMs < TAP_THRESHOLD_MS) { //tap
+            if (required == ButtonAction.TAP) {
+                success = modul.tap();
+            } else {
+                success = false; // hold = strike
+            }
+        } else { // hold
+            if (required == ButtonAction.TAP) { //tap = strike
+                success = false;
+            } else {
+                success = modul.solveByHoldSeconds(roundedSeconds);
+            }
         }
 
         if (success) {
-            statusLabel.setText("BENAR! MODULE SOLVED.");
-            statusLabel.setForeground(Color.GREEN);
+            holdTimeLabel.setText("MODULE SOLVED");
+            holdTimeLabel.setForeground(Color.GREEN);
             mainButtonVisual.setEnabled(false);
         } else {
-            statusLabel.setText("SALAH AKSI! STRIKE +1");
-            statusLabel.setForeground(Color.RED);
+            holdTimeLabel.setText("STRIKE");
+            holdTimeLabel.setForeground(Color.RED);
             if (onStrike != null) {
                 onStrike.run();
             }
         }
     }
 
-
     private void startHoldTimer() {
         pressStartTime = System.currentTimeMillis();
 
-    // kalau sudah ada timer lama, stop dulu
         if (holdTimer != null && holdTimer.isRunning()) {
             holdTimer.stop();
         }
@@ -184,24 +170,5 @@ public class ButtonModulPanel extends JPanel {
         if (holdTimer != null && holdTimer.isRunning()) {
             holdTimer.stop();
         }
-
-        // hitung lama hold terakhir
-        long elapsedMs = System.currentTimeMillis() - pressStartTime;
-        double sec = elapsedMs / 1000.0;
-
-        // pembulatan: 1.23 -> 1, 1.51 -> 2, dll
-        long rounded = Math.round(sec);
-
-        // tampilkan dalam bentuk detik bulat
-        holdTimeLabel.setText(String.format("Hold: %.2f s (≈ %d)", sec, rounded));
-    }
-
-    // getter opsional
-    public boolean isSolved() {
-        return modul.isSolvedStatus();
-    }
-
-    public ButtonAction getRequiredAction() {
-        return modul.getRequiredAction();
     }
 }

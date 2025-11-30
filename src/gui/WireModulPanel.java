@@ -73,7 +73,7 @@ public class WireModulPanel extends JPanel {
         add(wiresRow, BorderLayout.CENTER);
 
         statusLabel.setForeground(Theme.TEXT_COLOR);
-        statusLabel.setFont(Theme.LABEL_FONT);
+        statusLabel.setFont(Theme.BUTTON_FONT);
         add(statusLabel, BorderLayout.NORTH);
 	}
 
@@ -135,7 +135,7 @@ public class WireModulPanel extends JPanel {
         } else {
             // Kalau salah 
             wireButtons[index].setEnabled(false);
-            statusLabel.setText("WRONG WIRE! STRIKE +1");
+            statusLabel.setText("WRONG WIRE!");
             statusLabel.setForeground(Color.RED);
 
             if (onStrike != null) {

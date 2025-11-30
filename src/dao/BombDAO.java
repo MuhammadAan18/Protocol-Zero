@@ -12,7 +12,7 @@ public class BombDAO extends DatabaseConnection {
             FROM bomb b
             ORDER BY RAND()
             LIMIT 1
-        """;
+            """;
         
         try (Connection c = getConnection();
             PreparedStatement psBomb = c.prepareStatement(sqlBomb);
@@ -31,7 +31,7 @@ public class BombDAO extends DatabaseConnection {
                 FROM bomb_wire
                 WHERE bomb_id = ?
                 ORDER BY wire_index ASC
-            """;
+                """;
 
             List<Wire> wires = new ArrayList<>();
 
@@ -59,7 +59,7 @@ public class BombDAO extends DatabaseConnection {
                 FROM bomb_button
                 WHERE bomb_id = ?
                 LIMIT 1
-            """;
+                """;
 
             try (PreparedStatement psButton = c.prepareStatement(sqlButton)) {
                 psButton.setInt(1, bombId);
@@ -87,6 +87,40 @@ public class BombDAO extends DatabaseConnection {
                         ButtonModule buttonModule = new ButtonModule(button, baseAction);
                         buttonModule.applySerialRules(serial);
                         modules.add(buttonModule);
+                    }
+                }
+            }
+
+            // load keypad module
+
+            String sqlKeypad = """
+                    SELECT column_index
+                    FROM bomb_keypad
+                    WHERE bomb_id = ?
+                    """;
+
+            try (PreparedStatement psKeypad = c.prepareStatement(sqlKeypad)) {
+                psKeypad.setInt(1, bombId);
+
+                try (ResultSet rsKeypad = psKeypad.executeQuery()) {
+                    while (rsKeypad.next()) {
+                        int columnIndex = rsKeypad.getInt("column_index");
+
+                        List<Keypad> columnSymbols;
+                        switch (columnIndex) {
+                            case 1 -> columnSymbols = KeypadColumns.COLUMN_1;
+                            case 2 -> columnSymbols = KeypadColumns.COLUMN_2;
+                            case 3 -> columnSymbols = KeypadColumns.COLUMN_3;
+                            case 4 -> columnSymbols = KeypadColumns.COLUMN_4;
+                            default -> {
+                                columnSymbols = KeypadColumns.COLUMN_1;
+                            }
+                        }
+
+                        KeypadModule keypadModule = new KeypadModule(columnSymbols);
+                        // saat ini applySerialRules(serial) kosong, tapi tetap dipanggil supaya konsisten
+                        keypadModule.applySerialRules(serial);
+                        modules.add(keypadModule);
                     }
                 }
             }
