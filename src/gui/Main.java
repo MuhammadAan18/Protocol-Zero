@@ -93,6 +93,10 @@ public class Main extends JFrame{
 		GuideDialogs.showManual(this); //simpan buat guide nya
 	}
 
+	public void showLeaderboardDialog() {
+    	LeaderBoardDialog.show(this);
+	}
+
 	public DatabaseConnection getDb() {
 		return db; 
 	}
@@ -108,7 +112,7 @@ public class Main extends JFrame{
 			JOptionPane.showMessageDialog(this, "Tidak ada bomb di database!", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 	} 
-	
+
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(Main::new);
 	}

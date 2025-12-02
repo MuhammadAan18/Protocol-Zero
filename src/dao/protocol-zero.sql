@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 01, 2025 at 12:54 AM
+-- Generation Time: Dec 02, 2025 at 02:49 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -40,9 +40,9 @@ CREATE TABLE `bomb` (
 
 INSERT INTO `bomb` (`bomb_id`, `serial_code`, `time_limit`, `max_strikes`) VALUES
 (1, 'Z9E1', 300, 3),
-(2, 'A0B7', 300, 3),
-(3, 'A0O1', 300, 3),
-(4, 'A4N0', 300, 3),
+(2, 'A2B5', 300, 3),
+(3, 'A4O3', 300, 3),
+(4, 'A3N0', 300, 3),
 (5, 'P5Q2', 300, 3),
 (6, 'AIO3', 300, 3);
 
@@ -179,6 +179,21 @@ INSERT INTO `bomb_wire` (`id`, `bomb_id`, `wire_index`, `wire_color`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `score`
+--
+
+CREATE TABLE `score` (
+  `score_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `bomb_id` int(11) NOT NULL,
+  `strike_left` int(11) NOT NULL,
+  `time_left` int(11) NOT NULL,
+  `game_score` enum('SS','A','B','C','F') NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `user`
 --
 
@@ -193,8 +208,7 @@ CREATE TABLE `user` (
 --
 
 INSERT INTO `user` (`user_id`, `username`, `password`) VALUES
-(1, 'AAN', 'a'),
-(7, 'A', 'a');
+(1, 'A', 'a');
 
 --
 -- Indexes for dumped tables
@@ -234,6 +248,14 @@ ALTER TABLE `bomb_simon`
 ALTER TABLE `bomb_wire`
   ADD PRIMARY KEY (`id`),
   ADD KEY `bomb_id` (`bomb_id`);
+
+--
+-- Indexes for table `score`
+--
+ALTER TABLE `score`
+  ADD PRIMARY KEY (`score_id`),
+  ADD KEY `fk_score_user` (`user_id`),
+  ADD KEY `fk_score_bomb` (`bomb_id`);
 
 --
 -- Indexes for table `user`
@@ -277,10 +299,16 @@ ALTER TABLE `bomb_wire`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
+-- AUTO_INCREMENT for table `score`
+--
+ALTER TABLE `score`
+  MODIFY `score_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
 -- AUTO_INCREMENT for table `user`
 --
 ALTER TABLE `user`
-  MODIFY `user_id` int(12) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `user_id` int(12) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Constraints for dumped tables
@@ -309,6 +337,13 @@ ALTER TABLE `bomb_simon`
 --
 ALTER TABLE `bomb_wire`
   ADD CONSTRAINT `bomb_wire_ibfk_1` FOREIGN KEY (`bomb_id`) REFERENCES `bomb` (`bomb_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `score`
+--
+ALTER TABLE `score`
+  ADD CONSTRAINT `fk_score_bomb` FOREIGN KEY (`bomb_id`) REFERENCES `bomb` (`bomb_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_score_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

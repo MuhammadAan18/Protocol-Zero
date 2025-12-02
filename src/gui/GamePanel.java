@@ -2,7 +2,7 @@ package gui;
 
 import java.awt.*;
 import java.io.File;
-
+import java.util.List;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -10,7 +10,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.event.*;
 
-
+import dao.*;
 import model.*;
 
 public class GamePanel extends JPanel {
@@ -19,6 +19,8 @@ public class GamePanel extends JPanel {
     private final JLabel serialNumber = new JLabel("Serial", SwingConstants.LEFT);
     private final JLabel timer        = new JLabel("Timer",  SwingConstants.CENTER);
 	private final JLabel strikeLabel  = new JLabel("", SwingConstants.RIGHT);
+    private final JLabel penaltyLabel = new JLabel("", SwingConstants.CENTER);
+
     private final ImageIcon[] strike = {
 		loadStrikeIcon("assets/strikes/0strikes.png"),
 		loadStrikeIcon("assets/strikes/1strikes.png"),
@@ -169,6 +171,11 @@ public class GamePanel extends JPanel {
         hud.add(center, BorderLayout.CENTER);
         hud.add(right, BorderLayout.EAST);
 
+        penaltyLabel.setForeground(Color.RED);
+    penaltyLabel.setFont(Theme.BUTTON_FONT);
+        penaltyLabel.setVisible(false);
+        center.add(penaltyLabel);
+
         return hud;
     }
 
@@ -239,7 +246,10 @@ public class GamePanel extends JPanel {
 	}
 
     private void initActions() {
-        btnBack.addActionListener(e -> mainApp.showHome());
+        btnBack.addActionListener(e -> {
+            stopTickSound();
+            mainApp.showHome();
+        }); 
         btnDefuse.addActionListener(e -> checkAllModulesSolved());
         btnManual.addActionListener(e -> mainApp.showManual());
     }
@@ -276,12 +286,44 @@ public class GamePanel extends JPanel {
         currentStrikes++;
         updateStrikeHud();
 
-        for (BombModule m : currentBomb.getModules()) { //khusus untu modul simon untuk ngeset jumlah strike nya
+        if (bombTimer != null && remainingSeconds > 0) {
+            remainingSeconds -= 30;
+            showPenaltyText("-30"); 
+            
+            if (remainingSeconds < 0) {
+                remainingSeconds = 0;
+            }
+
+            // update tampilan timer
+            setTimerText(formatTime(remainingSeconds));
+
+            // sesuaikan sound normal / fast tick
+            if (remainingSeconds > 10) {
+                if (fastTickActive) {
+                    playNormalTickLoop();
+                }
+            } else {
+                if (!fastTickActive) {
+                    playFastTickLoop();
+                }
+            }
+
+            // jika waktu habis setelah penalti → langsung meledak
+            if (remainingSeconds <= 0) {
+                bombTimer.stop();
+                handleTimeUp();
+                return; // stop di sini supaya tidak lanjut ke logika strike max
+            }
+        }
+
+        // 3. Update jumlah strike ke modul Simon
+        for (BombModule m : currentBomb.getModules()) {
             if (m instanceof SimonModule simon) {
                 simon.setStrikeCount(currentStrikes);
             }
         }
 
+        // 4. Jika strike sudah mencapai batas → bomb meledak karena strike
         if (currentStrikes >= currentBomb.getMaxStrikes()) {
     		if (bombTimer != null) bombTimer.stop();
     		playExplosionOnce();
@@ -304,13 +346,21 @@ public class GamePanel extends JPanel {
         if (allSolved) {
 			if (bombTimer != null) bombTimer.stop();
     		stopTickSound();
-            JOptionPane.showMessageDialog(
-                    this,
-                    "BOMB DEFUSED.\nMission complete.",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-            mainApp.showHome();
+
+            // buat leaderboar
+            int bombID = currentBomb.getbomb_Id();
+            int maxStrikes = currentBomb.getMaxStrikes();
+            int strikesLeft = Math.max(0, maxStrikes - currentStrikes);
+            int timeLeft = Math.max(0, remainingSeconds);
+            User currentUser = mainApp.getCurrentUsername();
+            int user_id = 0;
+
+            if (currentUser != null) {
+                user_id = currentUser.getUserID();
+            }
+            
+            ScoreDAO.insertScore(user_id, bombID, strikesLeft, timeLeft, maxStrikes);
+            LeaderBoardDialog.show(mainApp);
         } else {
 			JOptionPane.showMessageDialog(
                     this,
@@ -355,9 +405,12 @@ public class GamePanel extends JPanel {
     	bombTimer.start();
 	}
 
-    public int getLastTimerDigit() {
-        if (remainingSeconds < 0) return 0;
-        return Math.abs(remainingSeconds) % 10;
+    private void showPenaltyText(String text) {
+        penaltyLabel.setText(text);
+        penaltyLabel.setVisible(true);
+
+        // Sembunyikan setelah 0.5 detik
+        new Timer(500, e -> penaltyLabel.setVisible(false)).start();
     }
 
 	private void handleTimeUp() {
@@ -445,4 +498,36 @@ public class GamePanel extends JPanel {
         	bombTickClip.stop();
     	}
 	}
+
+    public void showLeaderboardDialog() {
+        List<ScoreEntry> scores = ScoreDAO.getTopScores(10);
+
+    String[] columns = { "Rank", "User", "Bomb", "Strike", "Time", "Grade" };
+    String[][] data = new String[scores.size()][columns.length];
+
+    int rank = 1;
+    for (int i = 0; i < scores.size(); i++) {
+        ScoreEntry s = scores.get(i);
+        data[i][0] = String.valueOf(rank++);
+        data[i][1] = String.valueOf(s.getUserId());
+        data[i][2] = String.valueOf(s.getBombId());
+        data[i][3] = String.valueOf(s.getStrikeLeft());
+        data[i][4] = String.valueOf(s.getTimeLeft());
+        data[i][5] = s.getGameScore();
+    }
+
+    JTable table = new JTable(data, columns);
+    table.setEnabled(false);
+    table.setRowHeight(26);
+
+    JScrollPane scrollPane = new JScrollPane(table);
+    scrollPane.setPreferredSize(new Dimension(600, 300));
+
+    JOptionPane.showMessageDialog(
+            null,
+            scrollPane,
+            "LEADERBOARD",
+            JOptionPane.PLAIN_MESSAGE
+    );
+}
 }
