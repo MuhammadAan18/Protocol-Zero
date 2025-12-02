@@ -94,6 +94,11 @@ public class GamePanel extends JPanel {
         grid.repaint();
     }
 
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        g.drawImage(new ImageIcon("assets/bg/bg_game.png").getImage(), 0, 0, getWidth(), getHeight(), this);
+    }
+
     private String formatTime(int totalSeconds) { //buat format wkatu
         int m = totalSeconds / 60;
         int s = totalSeconds % 60;
@@ -236,7 +241,7 @@ public class GamePanel extends JPanel {
     private void initActions() {
         btnBack.addActionListener(e -> mainApp.showHome());
         btnDefuse.addActionListener(e -> checkAllModulesSolved());
-        btnManual.addActionListener(e -> mainApp.showGuide());
+        btnManual.addActionListener(e -> mainApp.showManual());
     }
 
     public void setSerialText(String serial) {
