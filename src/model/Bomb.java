@@ -21,7 +21,7 @@ public class Bomb {
 		return bomb_id; 
 	}
     
-	public String getSerial() {
+	    public String getSerial() {
 		return serial; 
 	}
 

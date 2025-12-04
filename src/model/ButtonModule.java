@@ -33,7 +33,7 @@ public class ButtonModule extends BombModule {
         }
 
         String upperSerial = serial.toUpperCase().trim();
-        // ==== STEP 1: ambil digit terakhir ====
+        // ambil digit terakhir
         int lastDigit = 0;
         if (!upperSerial.isEmpty()) {
             char lastChar = upperSerial.charAt(upperSerial.length() - 1);
@@ -43,7 +43,7 @@ public class ButtonModule extends BombModule {
                 lastDigit = 0;  // jika terakhir huruf/simbol → 0
             }
         }
-        // ==== STEP 2: mapping baseAction -> baseValue ====
+        // mapping baseAction -> baseValue
         int baseValue;
 
         switch (baseAction) {
@@ -60,7 +60,7 @@ public class ButtonModule extends BombModule {
                 baseValue = 0;
         }
 
-        // ==== STEP 3: hitung sum & tentukan requiredAction ====
+        // hitung sum & tentukan requiredAction
         int sum = baseValue + lastDigit;
         int r = sum % 3;
 

@@ -57,32 +57,46 @@ public class Main extends JFrame{
     }
 	
 	public void showGamePanel() {
-        try {
-            currentBomb = bombDao.loadRandomBomb();
-            if (currentBomb == null) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Tidak ada bomb di database!",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
+        // Load bomb di background thread agar tidak freeze UI
+        Thread loadBombThread = new Thread(() -> {
+            try {
+                Bomb loadedBomb = bombDao.loadRandomBomb();
+                
+                // Update UI di EDT setelah load selesai
+                SwingUtilities.invokeLater(() -> {
+                    if (loadedBomb == null) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Tidak ada bomb di database!",
+                                "Error",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                    }
+                    
+                    currentBomb = loadedBomb;
+                    gamePanel.loadBomb(currentBomb);
+                    cardLayout.show(panelContainer, "COUNTDOWN");
+                    countdownPanel.startCountdown(() -> {
+                        cardLayout.show(panelContainer, "GAME");
+                        gamePanel.startBombTimer();
+                    });
+                });
+            } catch (SQLException ex) {
+                // Handle error di EDT juga
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Gagal memuat bomb: " + ex.getMessage(),
+                            "DB Error",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                });
             }
-            gamePanel.loadBomb(currentBomb);
-            cardLayout.show(panelContainer, "COUNTDOWN");
-            countdownPanel.startCountdown(() -> {
-                cardLayout.show(panelContainer, "GAME");
-                gamePanel.startBombTimer();
-            });
-
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Gagal memuat bomb: " + ex.getMessage(),
-                    "DB Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
-        }
+        });
+        
+        loadBombThread.setDaemon(true); // thread akan auto-stop saat app close
+        loadBombThread.start();
     }
 
 	public void showGuide() {
@@ -102,15 +116,41 @@ public class Main extends JFrame{
 	}
 
 	public void startNewGame() {
-		try {
-			currentBomb = bombDao.loadRandomBomb();
-			if (currentBomb != null) {
-				gamePanel.loadBomb(currentBomb);
-				cardLayout.show(panelContainer, "GAME");
+		// Load bomb di background thread agar tidak freeze UI
+		Thread loadBombThread = new Thread(() -> {
+			try {
+				Bomb loadedBomb = bombDao.loadRandomBomb();
+				
+				// Update UI di EDT setelah load selesai
+				SwingUtilities.invokeLater(() -> {
+					if (loadedBomb != null) {
+						currentBomb = loadedBomb;
+						gamePanel.loadBomb(currentBomb);
+						cardLayout.show(panelContainer, "GAME");
+					} else {
+						JOptionPane.showMessageDialog(
+								this, 
+								"Tidak ada bomb di database!", 
+								"Error", 
+								JOptionPane.ERROR_MESSAGE
+						);
+					}
+				});
+			} catch (SQLException ex) {
+				// Handle error di EDT juga
+				SwingUtilities.invokeLater(() -> {
+					JOptionPane.showMessageDialog(
+							this, 
+							"Gagal memuat bomb: " + ex.getMessage(), 
+							"Error", 
+							JOptionPane.ERROR_MESSAGE
+					);
+				});
 			}
-		} catch (SQLException ex) {
-			JOptionPane.showMessageDialog(this, "Tidak ada bomb di database!", "Error", JOptionPane.ERROR_MESSAGE);
-		}
+		});
+		
+		loadBombThread.setDaemon(true); // thread akan auto-stop saat app close
+		loadBombThread.start();
 	} 
 
 	public static void main(String[] args) {

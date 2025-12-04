@@ -36,7 +36,8 @@ public class GamePanel extends JPanel {
     private Bomb currentBomb;
     private int currentStrikes = 0;
 
-	private javax.swing.Timer bombTimer;
+	private Thread bombTimerThread;
+	private volatile boolean timerRunning = false;
 	private int remainingSeconds;
 	private Clip bombTickClip;
 	private boolean fastTickActive = false;
@@ -49,14 +50,21 @@ public class GamePanel extends JPanel {
 		initSound();
     }
 
-    // ================== LOAD BOMB ==================
+    // load bomb
     public void loadBomb(Bomb bomb) {
         this.currentBomb   = bomb;
         this.currentStrikes = 0;
 
-		if (bombTimer != null) {
-        	bombTimer.stop();
-    	}
+		// Stop thread sebelumnya jika masih berjalan
+		timerRunning = false;
+		if (bombTimerThread != null && bombTimerThread.isAlive()) {
+			try {
+				bombTimerThread.interrupt();
+				bombTimerThread.join(100); // tunggu maksimal 100ms
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
 
 		if (bomb == null) {
             serialNumber.setText("NO BOMB");
@@ -71,12 +79,12 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        // --- HUD atas ---
+        //  HUD atas 
         setSerialText("SERIAL : " + bomb.getSerial());
         setTimerText(formatTime(bomb.getTimeLimit()));  // misal timeLimit dalam detik
         setStrikeStatus(0);
 
-        // --- Isi grid modul ---
+        //  Isi grid modul 
         if (grid == null) return; // jaga-jaga
 
         grid.removeAll();
@@ -85,7 +93,6 @@ public class GamePanel extends JPanel {
             grid.add(createPanelForModule(m));
         }
 
-        // kalau modul kurang dari 4, isi filler supaya layout 2x2 tetap rapi
         while (grid.getComponentCount() < 4) {
             JPanel filler = new JPanel();
             filler.setOpaque(false);
@@ -129,16 +136,14 @@ public class GamePanel extends JPanel {
         if (module instanceof SimonModule simonModule) {
             return new SimonModulePanel(simonModule, this::registerStrike);
         }
-
         return p;
     }
 
-    // ================== UI SETUP ==================
+    // setup ui
     private void initUI() {
         setLayout(new BorderLayout());
-        setOpaque(true); // nanti ganti 
+        setOpaque(true); 
 		setBackground(Color.BLACK);
-        // setBorder(new EmptyBorder(20, 20, 20, 20));
 
         add(statusPanel(), BorderLayout.NORTH);
         add(modulGrid(),   BorderLayout.CENTER);
@@ -172,7 +177,7 @@ public class GamePanel extends JPanel {
         hud.add(right, BorderLayout.EAST);
 
         penaltyLabel.setForeground(Color.RED);
-    penaltyLabel.setFont(Theme.BUTTON_FONT);
+        penaltyLabel.setFont(Theme.BUTTON_FONT);
         penaltyLabel.setVisible(false);
         center.add(penaltyLabel);
 
@@ -187,33 +192,28 @@ public class GamePanel extends JPanel {
     }
 
     private JComponent buttonControl() {
-        // Container utama untuk tombol (BorderLayout: WEST, CENTER, EAST)
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
         bottom.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        // Inisialisasi styling untuk semua tombol
         createButton(btnBack);
         createButton(btnDefuse);
         createButton(btnManual);
 
-        // 1. KIRI (btnBack) - menggunakan FlowLayout.LEFT untuk memastikan padding kiri
         JPanel leftContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         leftContainer.setOpaque(false);
         leftContainer.add(btnBack);
         bottom.add(leftContainer, BorderLayout.WEST);
 
-        // 2. TENGAH (btnDefuse) - menggunakan FlowLayout.CENTER agar tombol tidak stretch
         JPanel centerContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         centerContainer.setOpaque(false);
         centerContainer.add(btnDefuse);
-        bottom.add(centerContainer, BorderLayout.CENTER); // BARU: Tambahkan ke CENTER
+        bottom.add(centerContainer, BorderLayout.CENTER); 
 
-        // 3. KANAN (btnManual) - menggunakan FlowLayout.RIGHT untuk memastikan padding kanan
         JPanel rightContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         rightContainer.setOpaque(false);
         rightContainer.add(btnManual);
-        bottom.add(rightContainer, BorderLayout.EAST); // btnManual sudah ada di sini
+        bottom.add(rightContainer, BorderLayout.EAST); 
 
         return bottom;
     }
@@ -286,7 +286,7 @@ public class GamePanel extends JPanel {
         currentStrikes++;
         updateStrikeHud();
 
-        if (bombTimer != null && remainingSeconds > 0) {
+        if (timerRunning && remainingSeconds > 0) {
             remainingSeconds -= 30;
             showPenaltyText("-30"); 
             
@@ -310,7 +310,10 @@ public class GamePanel extends JPanel {
 
             // jika waktu habis setelah penalti → langsung meledak
             if (remainingSeconds <= 0) {
-                bombTimer.stop();
+                timerRunning = false;
+                if (bombTimerThread != null) {
+                    bombTimerThread.interrupt();
+                }
                 handleTimeUp();
                 return; // stop di sini supaya tidak lanjut ke logika strike max
             }
@@ -325,7 +328,10 @@ public class GamePanel extends JPanel {
 
         // 4. Jika strike sudah mencapai batas → bomb meledak karena strike
         if (currentStrikes >= currentBomb.getMaxStrikes()) {
-    		if (bombTimer != null) bombTimer.stop();
+    		timerRunning = false;
+    		if (bombTimerThread != null) {
+    			bombTimerThread.interrupt();
+    		}
     		playExplosionOnce();
 
     		JOptionPane.showMessageDialog(
@@ -344,7 +350,10 @@ public class GamePanel extends JPanel {
         boolean allSolved = currentBomb.getModules().stream().allMatch(BombModule::isSolvedStatus);
 
         if (allSolved) {
-			if (bombTimer != null) bombTimer.stop();
+			timerRunning = false;
+			if (bombTimerThread != null) {
+				bombTimerThread.interrupt();
+			}
     		stopTickSound();
 
             // buat leaderboar
@@ -377,44 +386,76 @@ public class GamePanel extends JPanel {
     	remainingSeconds = currentBomb.getTimeLimit();
     	setTimerText(formatTime(remainingSeconds));
 
-	    if (bombTimer != null) {
-    	    bombTimer.stop();
-	    }
-    	playNormalTickLoop();
+	    // Stop thread sebelumnya jika masih berjalan
+		timerRunning = false;
+		if (bombTimerThread != null && bombTimerThread.isAlive()) {
+			try {
+				bombTimerThread.interrupt();
+				bombTimerThread.join(100); // tunggu maksimal 100ms
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
+    	
+		playNormalTickLoop();
+		timerRunning = true;
 
-    	bombTimer = new Timer(1000, e -> {
-        	remainingSeconds--;
-        	setTimerText(formatTime(remainingSeconds));
+		// Buat Runnable untuk bomb timer logic
+		Runnable timerTask = () -> {
+			try {
+				while (timerRunning && remainingSeconds > 0) {
+					Thread.sleep(1000); // tunggu 1 detik
+					
+					if (!timerRunning) break; // cek lagi setelah sleep
+					
+					remainingSeconds--;
+					
+					// Update UI di EDT (Event Dispatch Thread)
+					SwingUtilities.invokeLater(() -> {
+						setTimerText(formatTime(remainingSeconds));
 
-        	// ganti ke fast ticking kalau sisa <= 10
-        	if (remainingSeconds >10) {
-            	if (fastTickActive) {
-                	playNormalTickLoop();
-            	}
-        	} else {
-            	if (!fastTickActive) {
-                	playFastTickLoop();
-            	}
-        	}
+						// ganti ke fast ticking kalau sisa <= 10
+						if (remainingSeconds > 10) {
+							if (fastTickActive) {
+								playNormalTickLoop();
+							}
+						} else {
+							if (!fastTickActive) {
+								playFastTickLoop();
+							}
+						}
 
-        	if (remainingSeconds <= 0) {
-            	((Timer) e.getSource()).stop();
-            	handleTimeUp();
-        	}
-    	});
-    	bombTimer.start();
+						if (remainingSeconds <= 0) {
+							timerRunning = false;
+							handleTimeUp();
+						}
+					});
+				}
+			} catch (InterruptedException e) {
+				// Thread di-interrupt, stop timer
+				Thread.currentThread().interrupt();
+				timerRunning = false;
+			}
+		};
+
+		// Buat dan start thread
+		bombTimerThread = new Thread(timerTask);
+		bombTimerThread.setDaemon(true); // thread akan auto-stop saat app close
+		bombTimerThread.start();
 	}
 
     private void showPenaltyText(String text) {
         penaltyLabel.setText(text);
         penaltyLabel.setVisible(true);
-
         // Sembunyikan setelah 0.5 detik
         new Timer(500, e -> penaltyLabel.setVisible(false)).start();
     }
 
 	private void handleTimeUp() {
-    	if (bombTimer != null) bombTimer.stop();
+    	timerRunning = false;
+    	if (bombTimerThread != null) {
+    		bombTimerThread.interrupt();
+    	}
     	stopTickSound();
     	JOptionPane.showMessageDialog(
             this,
@@ -480,6 +521,7 @@ public class GamePanel extends JPanel {
 
             int startFrame = (int) (10000 * frameRate / 1000f);
             int endFrame = (int) (10500 * frameRate / 1000f);
+            
             if (startFrame >= frameLength) {
                 startFrame = 0;
             }

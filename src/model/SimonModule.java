@@ -10,18 +10,16 @@ public class SimonModule extends BombModule {
     private int currentInputIndex = 0;
 
     private boolean serialHasVowel = false;
-    private int strikeCount = 0;          // diupdate dari GamePanel
+    private int strikeCount = 0;
 
     private final Random random = new Random();
 
-    // konfigurasi panjang sequence
     private final int startLength;
     private final int targetLength;
 
     public SimonModule(int startLength, int targetLength) {
         super("SIMON SAYS");
 
-        // jaga-jaga: nggak boleh < 1 atau target < start
         if (startLength < 1) startLength = 1;
         if (targetLength < startLength) targetLength = startLength;
 
@@ -44,9 +42,7 @@ public class SimonModule extends BombModule {
         serialHasVowel = serial.toUpperCase().matches(".*[AEIOU].*");
     }
 
-    // ==== API untuk GamePanel / GUI ====
-
-    /** Dipanggil ketika jumlah strike di bomb berubah. */
+    // Dipanggil ketika jumlah strike di bomb berubah. 
     public void setStrikeCount(int strikeCount) {
         // Aturan Simon asli: 0, 1, atau 2+ (kita clamp ke 0..2)
         if (strikeCount < 0) strikeCount = 0;
@@ -54,67 +50,57 @@ public class SimonModule extends BombModule {
         this.strikeCount = strikeCount;
     }
 
-    /** Urutan warna yang sedang dipakai untuk animasi blink. */
+    // Urutan warna yang sedang dipakai untuk animasi blink. 
     public List<SimonColor> getFlashOrder() {
         return new ArrayList<>(flashOrder);  // return copy biar aman
     }
 
-    /** Index input berikutnya yang diharapkan player. */
+    // Index input berikutnya yang diharapkan player. 
     public int getCurrentInputIndex() {
         return currentInputIndex;
     }
 
-    /**
-     * Dipanggil saat pemain menekan salah satu warna.
-     * @return true jika input benar, false jika salah (GamePanel kasih strike).
-     */
-public boolean pressColor(SimonColor input) {
-    if (solvedStatus) {
-        return true;  // sudah solved, anggap selalu "benar"
-    }
-
-    SimonColor flashColor = flashOrder.get(currentInputIndex);
-    SimonColor expected   = mapFlashToPress(flashColor);
-
-    boolean ok = (input == expected);
-
-    if (ok) {
-        currentInputIndex++;
-
-        if (currentInputIndex >= flashOrder.size()) {
-
-            if (flashOrder.size() >= targetLength) {
-                // sequence sudah sepanjang target → modul selesai
-                solvedStatus = true;
-                currentInputIndex = 0;
-            } else {
-                // belum target → tambahkan warna baru
-                addRandomColor();
-                currentInputIndex = 0;
-            }
+    public boolean pressColor(SimonColor input) {
+        if (solvedStatus) {
+            return true;  // sudah solved
         }
-    } else {
-        // salah → reset progres input (ulang dari awal urutan)
-        currentInputIndex = 0;
+
+        SimonColor flashColor = flashOrder.get(currentInputIndex);
+        SimonColor expected   = mapFlashToPress(flashColor);
+
+        boolean ok = (input == expected);
+
+        if (ok) {
+            currentInputIndex++;
+
+            if (currentInputIndex >= flashOrder.size()) {
+                if (flashOrder.size() >= targetLength) {
+                    // sequence sudah sepanjang target maka modul selesai
+                    solvedStatus = true;
+                    currentInputIndex = 0;
+                } else {
+                    // belum target maka tambahkan warna baru
+                    addRandomColor();
+                    currentInputIndex = 0;
+                }
+            }
+        } else {
+            // salah → reset progres input (ulang dari awal urutan)
+            currentInputIndex = 0;
+        }
+
+        return ok;
     }
 
-    return ok;
-}
 
-
-    // ==== LOGIKA INTERNAL ====
-
-    /** Tambah 1 warna random di akhir sequence. */
+    // Tambah 1 warna random di akhir sequence. 
     private void addRandomColor() {
         SimonColor[] values = SimonColor.values();
         SimonColor next = values[random.nextInt(values.length)];
         flashOrder.add(next);
     }
 
-    /**
-     * Mapping warna berkedip → warna yang harus ditekan
-     * berdasarkan apakah serial punya vokal dan jumlah strike.
-     */
+    // Mapping warna berkedip berdasarkan apakah serial punya vokal dan jumlah strike.
     private SimonColor mapFlashToPress(SimonColor flash) {
         if (serialHasVowel) {
             // SERIAL PUNYA VOKAL

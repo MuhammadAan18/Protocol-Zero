@@ -50,7 +50,7 @@ public class SimonModulePanel extends JPanel {
         startAttractMode();  
     }
 
-    // ====== LOAD ICONS DARI FILESYSTEM ======
+    // LOAD ICONS DARI FILESYSTEM
     
     private void loadIcons() {
         iconIdle   = loadScaledIcon("assets/lamp/lamp_idle.png",   ICON_SIZE, ICON_SIZE);
@@ -71,7 +71,7 @@ public class SimonModulePanel extends JPanel {
         }
     }
 
-    // ====== INIT UI ======
+    // INIT UI
 
     private void initUI() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -105,7 +105,7 @@ public class SimonModulePanel extends JPanel {
         add(center);
     }
 
-    // --- BAGIAN YANG DIPERBAIKI ---
+    //  BAGIAN YANG DIPERBAIKI 
     private JButton createSimonButton(SimonColor color) {
         JButton btn = new JButton();
         btn.setFocusPainted(false);
@@ -132,19 +132,16 @@ public class SimonModulePanel extends JPanel {
         btn.addActionListener(e -> handleColorPress(color));
         return btn;
     }
-    // -----------------------------
 
-    // ====== HANDLE INPUT PEMAIN ======
+    // HANDLE INPUT PEMAIN
 
     private void handleColorPress(SimonColor color) {
-        // Kita tidak disable tombol, jadi tombol selalu bisa diklik.
-        // Tapi kita cegah logic berjalan jika sedang playback (!acceptingInput)
-        // atau jika modul sudah selesai.
+
         if (!acceptingInput || modul.isSolvedStatus()) {
             return;
         }
 
-        // ==== PHASE 1: PRE-GAME (WARNA PERTAMA KEDIP) ====
+        // PHASE 1: PRE-GAME (WARNA PERTAMA KEDIP)
         if (preGame) {
             preGame = false;
             if (attractTimer != null && attractTimer.isRunning()) {
@@ -158,7 +155,7 @@ public class SimonModulePanel extends JPanel {
             return; 
         }
 
-        // ==== PHASE 2: GAME NORMAL ====
+        // PHASE 2: GAME NORMAL
         highlightOnly(color);
         boolean ok = modul.pressColor(color);
 
@@ -174,7 +171,7 @@ public class SimonModulePanel extends JPanel {
             } else {
                 List<SimonColor> seq = modul.getFlashOrder();
                 if (seq.size() != lastKnownSequenceLength && modul.getCurrentInputIndex() == 0) {
-                    // Sequence bertambah panjang -> Replay sequence baru
+                    // Sequence bertambah panjang maka replay sequence baru
                     startSequencePlayback();
                 } else {
                     Timer restoreTimer = new Timer(300, e -> {
@@ -193,7 +190,7 @@ public class SimonModulePanel extends JPanel {
         }
     }
 
-    // ====== PLAYBACK SEQUENCE (BLINK DENGAN ICON) ======
+    // PLAYBACK SEQUENCE (BLINK DENGAN ICON)
 
     private void startSequencePlayback() {
         acceptingInput = false; // Block input user lewat logic
@@ -205,7 +202,7 @@ public class SimonModulePanel extends JPanel {
         List<SimonColor> seq = modul.getFlashOrder();
         lastKnownSequenceLength = seq.size();
 
-        resetAllIcons(); // Semua jadi idle/gelap
+        resetAllIcons(); // Semua jadi idle
 
         seqIndex = 0;
         seqOnPhase = true;
@@ -215,7 +212,7 @@ public class SimonModulePanel extends JPanel {
             
             // Cek jika sequence selesai diputar
             if (currentSeq.isEmpty() || seqIndex >= currentSeq.size()) {
-                // resetAllIcons(); // Pastikan semua mati
+                resetAllIcons(); // Pastikan semua mati
                 sequenceTimer.stop();
                 
                 acceptingInput = true; // BUKA BLOCK INPUT
@@ -248,7 +245,7 @@ public class SimonModulePanel extends JPanel {
         titleLabel.setForeground(Theme.TEXT_COLOR);
     }
 
-    // ====== ATTRACT MODE (WARNA PERTAMA KEDIP TERUS) ======
+    // ATTRACT MODE (WARNA PERTAMA KEDIP TERUS)
 
     private void startAttractMode() {
         preGame = true;
@@ -284,7 +281,7 @@ public class SimonModulePanel extends JPanel {
         titleLabel.setForeground(Theme.TEXT_COLOR);
     }
 
-    // ====== HELPER ICON & BUTTON ======
+    // HELPER ICON & BUTTON
 
     private JButton getButtonForColor(SimonColor c) {
         return switch (c) {
@@ -333,7 +330,7 @@ public class SimonModulePanel extends JPanel {
         if (iconYellow != null) btnYellow.setIcon(iconYellow);
     }
 
-    // --- METHOD BARU: Nyalakan SEMUA tombol (Ready state) ---
+    //  METHOD BARU: Nyalakan SEMUA tombol (Ready state) 
     private void setAllButtonsActive() {
         setButtonIconForColor(btnRed, SimonColor.RED);
         setButtonIconForColor(btnBlue, SimonColor.BLUE);
@@ -341,7 +338,7 @@ public class SimonModulePanel extends JPanel {
         setButtonIconForColor(btnYellow, SimonColor.YELLOW);
     }
 
-    // --- METHOD BARU: Nyalakan SATU tombol, sisanya IDLE (Focus state) ---
+    //  METHOD BARU: Nyalakan SATU tombol, sisanya IDLE (Focus state) 
     private void highlightOnly(SimonColor target) {
         // Matikan semua dulu
         resetAllIcons(); 
